@@ -96,4 +96,27 @@ app.delete('/api/leads/:id', (req, res) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`🚀 CRM Server running on port ${PORT}`);
+});db.connect((err) => {
+    if (err) {
+        console.error('❌ Error connecting to MySQL:', err);
+        return;
+    }
+    console.log('✅ Connected to MySQL Database');
+
+    // AUTO-CREATE TABLE FOR CLOUD HOSTING
+    const createTableQuery = `
+    CREATE TABLE IF NOT EXISTS leads (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        source VARCHAR(50) DEFAULT 'Website',
+        status ENUM('New', 'Contacted', 'Converted') DEFAULT 'New',
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );`;
+    
+    db.query(createTableQuery, (err) => {
+        if (err) console.error("Error creating table:", err);
+        else console.log("Table 'leads' verified/created.");
+    });
 });
