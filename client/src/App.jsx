@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { Users, Mail, Clock, Trash2, Lock, LogIn, LogOut, Send, ArrowLeft, Globe, Save, CheckCircle, AlertCircle, X } from 'lucide-react';
+import { Users, Mail, Clock, Trash2, Lock, LogIn, LogOut, Send, ArrowLeft, Globe, Save } from 'lucide-react';
 import './App.css';
 
 function App() {
@@ -8,14 +8,6 @@ function App() {
   const [view, setView] = useState('form'); 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
-  
-  // Notification State
-  const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
-
-  const showNotification = (message, type = 'success') => {
-    setNotification({ show: true, message, type });
-    setTimeout(() => setNotification({ show: false, message: '', type: 'success' }), 4000);
-  };
 
   const fetchLeads = useCallback(async () => {
     try {
@@ -45,10 +37,10 @@ function App() {
 
     try {
       await axios.post('http://localhost:5000/api/leads', newLead);
-      showNotification('Lead sent to CRM successfully!', 'success');
+      alert('Lead sent to CRM successfully!');
       e.target.reset();
     } catch {
-      showNotification('Failed to send lead. Is the server running?', 'error');
+      alert('Failed to send lead. Make sure your server is running!');
     }
   };
 
@@ -59,10 +51,10 @@ function App() {
       if (response.data.success) {
         setIsAuthenticated(true);
         setView('admin');
-        showNotification('Welcome back, Admin!', 'success');
       }
     } catch (err) {
-      showNotification('Invalid Admin Password', 'error');
+      alert('Invalid Admin Password');
+      console.error('Login error:', err);
     }
   };
 
@@ -73,9 +65,9 @@ function App() {
         notes: newNotes 
       });
       fetchLeads(); 
-      showNotification('Changes saved successfully!', 'success');
+      alert('Changes saved successfully!');
     } catch (err) {
-      showNotification('Error updating lead', 'error');
+      console.error('Error updating lead:', err);
     }
   };
 
@@ -84,28 +76,15 @@ function App() {
       try {
         await axios.delete(`http://localhost:5000/api/leads/${id}`);
         fetchLeads();
-        showNotification('Lead deleted', 'success');
       } catch (err) {
-        showNotification('Error deleting lead', 'error');
+        console.error('Error deleting lead:', err);
       }
     }
   };
 
-  // Shared Notification Component
-  const NotificationToast = () => (
-    <div className={`notification-toast ${notification.type} ${notification.show ? 'show' : ''}`}>
-      {notification.type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
-      <span>{notification.message}</span>
-      <button onClick={() => setNotification({ ...notification, show: false })} className="close-toast">
-        <X size={16} />
-      </button>
-    </div>
-  );
-
   if (view === 'form') {
     return (
       <div className="contact-page-wrapper">
-        <NotificationToast />
         <div className="contact-card">
           <div className="form-header">
             <Send size={40} color="#6366f1" />
@@ -138,7 +117,6 @@ function App() {
   if (view === 'login' && !isAuthenticated) {
     return (
       <div className="login-container">
-        <NotificationToast />
         <form className="login-box" onSubmit={handleLogin}>
           <button type="button" onClick={() => setView('form')} className="back-btn">
             <ArrowLeft size={16} /> Back to Form
@@ -162,7 +140,6 @@ function App() {
 
   return (
     <div className="dashboard-container">
-      <NotificationToast />
       <header className="dashboard-header">
         <div className="header-left">
           <h1><Users size={32} /> Lead Management</h1>
