@@ -390,4 +390,48 @@ td:has(.note-editor) {
   display: flex;
   align-items: center;
   gap: 8px; 
+}/* Notification Toast Styles */
+.notification-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  border-radius: 8px;
+  color: white;
+  font-weight: 500;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  z-index: 9999;
+  transform: translateX(120%);
+  transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.notification-toast.show {
+  transform: translateX(0);
+}
+
+.notification-toast.success {
+  background-color: #10b981; /* Emerald Green */
+  border-left: 5px solid #065f46;
+}
+
+.notification-toast.error {
+  background-color: #ef4444; /* Red */
+  border-left: 5px solid #991b1b;
+}
+
+.close-toast {
+  background: transparent;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  opacity: 0.7;
+}
+
+.close-toast:hover {
+  opacity: 1;
 }
