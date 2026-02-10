@@ -3,7 +3,8 @@ import axios from 'axios';
 import { 
   Users, Mail, Clock, Trash2, Lock, LogIn, LogOut, Send, 
   Search, CheckCircle, BarChart3, Save, LayoutDashboard, 
-  UserPlus, PieChart as PieIcon, Settings, X, AlertCircle 
+  UserPlus, PieChart as PieIcon, Settings, X, AlertCircle,
+  TrendingUp, Percent, Zap, Activity
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -33,8 +34,6 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // Notification State
   const [notification, setNotification] = useState({ message: '', type: '' });
 
   const showNotification = (message, type = 'success') => {
@@ -55,11 +54,22 @@ function App() {
     if (isAuthenticated) fetchLeads();
   }, [isAuthenticated, fetchLeads]);
 
+  // --- ENHANCED DATA PROCESSING ---
   const stats = useMemo(() => {
+    const total = leads.length;
+    const newCount = leads.filter(l => l.status === 'New').length;
+    const contactedCount = leads.filter(l => l.status === 'Contacted').length;
+    const convertedCount = leads.filter(l => l.status === 'Converted').length;
+
+    // Relationship Calculations
+    const conversionRate = total > 0 ? ((convertedCount / total) * 100).toFixed(1) : 0;
+    const engagementRate = total > 0 ? (((contactedCount + convertedCount) / total) * 100).toFixed(1) : 0;
+    const contactToConvertRatio = contactedCount > 0 ? (convertedCount / contactedCount).toFixed(2) : 0;
+
     const statusData = [
-      { name: 'New', value: leads.filter(l => l.status === 'New').length },
-      { name: 'Contacted', value: leads.filter(l => l.status === 'Contacted').length },
-      { name: 'Converted', value: leads.filter(l => l.status === 'Converted').length },
+      { name: 'New', value: newCount },
+      { name: 'Contacted', value: contactedCount },
+      { name: 'Converted', value: convertedCount },
     ];
 
     const dailyMap = {};
@@ -69,7 +79,11 @@ function App() {
     });
     const timelineData = Object.keys(dailyMap).map(date => ({ date, count: dailyMap[date] })).reverse();
 
-    return { statusData, timelineData, total: leads.length };
+    return { 
+      statusData, timelineData, total, 
+      conversionRate, engagementRate, contactToConvertRatio,
+      newCount, contactedCount, convertedCount
+    };
   }, [leads]);
 
   const filteredLeads = leads.filter(lead => 
@@ -77,6 +91,7 @@ function App() {
     lead.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // --- HANDLERS ---
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     const newLead = {
@@ -88,32 +103,23 @@ function App() {
       await axios.post(`${API_BASE_URL}/api/leads`, newLead);
       showNotification('Inquiry Sent Successfully!', 'success');
       e.target.reset();
-    } catch { 
-      showNotification('Error sending lead. Please try again.', 'error'); 
-    }
+    } catch { showNotification('Error sending lead.', 'error'); }
   };
 
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
       const response = await axios.post(`${API_BASE_URL}/api/login`, { password });
-      if (response.data.success) {
-        setIsAuthenticated(true);
-        showNotification('Welcome back, Admin!', 'success');
-      }
-    } catch { 
-      showNotification('Invalid Password. Access Denied.', 'error'); 
-    }
+      if (response.data.success) setIsAuthenticated(true);
+    } catch { showNotification('Invalid Password', 'error'); }
   };
 
   const updateLead = async (id, status, notes) => {
     try {
       await axios.put(`${API_BASE_URL}/api/leads/${id}`, { status, notes });
       fetchLeads();
-      showNotification('Lead updated successfully', 'success');
-    } catch { 
-      showNotification('Update failed', 'error'); 
-    }
+      showNotification('Update successful');
+    } catch { showNotification('Update failed', 'error'); }
   };
 
   const deleteLead = async (id) => {
@@ -121,10 +127,8 @@ function App() {
       try {
         await axios.delete(`${API_BASE_URL}/api/leads/${id}`);
         fetchLeads();
-        showNotification('Lead deleted permanently', 'success');
-      } catch { 
-        showNotification('Delete failed', 'error'); 
-      }
+        showNotification('Lead Deleted');
+      } catch { showNotification('Delete failed', 'error'); }
     }
   };
 
@@ -136,7 +140,6 @@ function App() {
           <div className="form-header">
             <Send size={40} className="icon-glow" />
             <h2>Get in Touch</h2>
-            <p>Fill out the form to start your project with us.</p>
           </div>
           <form onSubmit={handleFormSubmit}>
             <div className="input-group">
@@ -200,7 +203,7 @@ function App() {
           <button className={adminTab === 'leads' ? 'active' : ''} onClick={() => setAdminTab('leads')}>
             <Users size={20} /> Manage Leads
           </button>
-          <button onClick={() => { setIsAuthenticated(false); showNotification('Signed out', 'success'); }} className="logout-nav">
+          <button onClick={() => setIsAuthenticated(false)} className="logout-nav">
             <LogOut size={20} /> Sign Out
           </button>
         </nav>
@@ -209,14 +212,14 @@ function App() {
       <main className="admin-main">
         <header className="admin-header">
           <div className="header-title">
-            <h1>{adminTab === 'dashboard' ? 'Business Analytics' : 'Lead Management'}</h1>
-            <p>Welcome back, Admin</p>
+            <h1>Dashboard</h1>
+            <p>Relationship & Performance Metrics</p>
           </div>
           <div className="header-actions">
             <div className="search-pill">
               <Search size={16} />
               <input 
-                placeholder="Search leads..." 
+                placeholder="Search..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -226,25 +229,64 @@ function App() {
 
         {adminTab === 'dashboard' ? (
           <div className="dashboard-content">
+            {/* Primary Volume Stats */}
             <div className="stats-grid">
               <div className="stat-box">
                 <Users className="blue" />
                 <div><span>Total Leads</span><h3>{stats.total}</h3></div>
               </div>
               <div className="stat-box">
-                <Clock className="yellow" />
-                <div><span>New Leads</span><h3>{leads.filter(l => l.status === 'New').length}</h3></div>
+                <TrendingUp className="purple" />
+                <div><span>Conv. Rate</span><h3>{stats.conversionRate}%</h3></div>
               </div>
               <div className="stat-box">
-                <CheckCircle className="green" />
-                <div><span>Conversions</span><h3>{leads.filter(l => l.status === 'Converted').length}</h3></div>
+                <Activity className="pink" />
+                <div><span>Engagement</span><h3>{stats.engagementRate}%</h3></div>
+              </div>
+            </div>
+
+            {/* Relationship Detail Cards */}
+            <div className="relationship-grid">
+              <div className="rel-card">
+                <div className="rel-header">
+                  <Zap size={18} />
+                  <span>Lead Pipeline Health</span>
+                </div>
+                <div className="rel-body">
+                   <div className="rel-stat">
+                      <label>Action Ratio</label>
+                      <div className="progress-container">
+                        <div className="progress-bar" style={{ width: `${stats.engagementRate}%` }}></div>
+                      </div>
+                      <small>{stats.engagementRate}% of leads have been engaged.</small>
+                   </div>
+                   <div className="rel-stat">
+                      <label>Contact-to-Close</label>
+                      <p>{stats.contactToConvertRatio}x</p>
+                      <small>Conversion multiplier for contacted leads.</small>
+                   </div>
+                </div>
+              </div>
+
+              <div className="rel-card">
+                <div className="rel-header">
+                  <Percent size={18} />
+                  <span>Status Distribution</span>
+                </div>
+                <div className="rel-body">
+                   <ul className="dist-list">
+                      <li><span>New</span> <strong>{stats.newCount}</strong></li>
+                      <li><span>Contacted</span> <strong>{stats.contactedCount}</strong></li>
+                      <li><span>Converted</span> <strong>{stats.convertedCount}</strong></li>
+                   </ul>
+                </div>
               </div>
             </div>
 
             <div className="charts-row">
-              <div className="chart-container main-chart">
-                <h3>Lead Acquisition Timeline</h3>
-                <ResponsiveContainer width="100%" height={300}>
+              <div className="chart-container">
+                <h3>Acquisition Timeline</h3>
+                <ResponsiveContainer width="100%" height={250}>
                   <LineChart data={stats.timelineData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
                     <XAxis dataKey="date" stroke="#94a3b8" />
@@ -254,31 +296,11 @@ function App() {
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-
-              <div className="chart-container side-chart">
-                <h3>Lead Distribution</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={stats.statusData}
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {stats.statusData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
             </div>
           </div>
         ) : (
           <div className="leads-content">
+            {/* ... Existing Leads Table (Unchanged) ... */}
             <div className="table-card">
               <table className="modern-table">
                 <thead>
