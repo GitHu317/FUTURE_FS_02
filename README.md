@@ -61,3 +61,5 @@ This project is a functional **Mini CRM (Customer Relationship Management)** sys
 
 ### 📬 Submission Links
 * **GitHub Repository:** https://github.com/GitHu317
+* App password: apptester
+* Livelink: https://future-fs-02-frontend-zyuq.onrender.com/
