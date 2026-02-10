@@ -3,7 +3,7 @@ import axios from 'axios';
 import { 
   Users, Mail, Clock, Trash2, Lock, LogIn, LogOut, Send, 
   Search, CheckCircle, BarChart3, Save, LayoutDashboard, 
-  UserPlus, PieChart as PieIcon, Settings 
+  UserPlus, PieChart as PieIcon, Settings, X, AlertCircle 
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -14,13 +14,33 @@ import './App.css';
 const API_BASE_URL = 'https://future-fs-02-vksh.onrender.com';
 const COLORS = ['#6366f1', '#fbbf24', '#34d299', '#ef4444'];
 
+// Custom Notification Component
+const Notification = ({ message, type, onClose }) => {
+  if (!message) return null;
+  return (
+    <div className={`notification-popup ${type}`}>
+      {type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+      <span>{message}</span>
+      <button onClick={onClose} className="close-notify"><X size={16} /></button>
+    </div>
+  );
+};
+
 function App() {
   const [leads, setLeads] = useState([]);
   const [view, setView] = useState('form'); 
-  const [adminTab, setAdminTab] = useState('dashboard'); // 'dashboard' or 'leads'
+  const [adminTab, setAdminTab] = useState('dashboard');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Notification State
+  const [notification, setNotification] = useState({ message: '', type: '' });
+
+  const showNotification = (message, type = 'success') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification({ message: '', type: '' }), 4000);
+  };
 
   const fetchLeads = useCallback(async () => {
     try {
@@ -35,7 +55,6 @@ function App() {
     if (isAuthenticated) fetchLeads();
   }, [isAuthenticated, fetchLeads]);
 
-  // --- DATA PROCESSING FOR CHARTS ---
   const stats = useMemo(() => {
     const statusData = [
       { name: 'New', value: leads.filter(l => l.status === 'New').length },
@@ -43,7 +62,6 @@ function App() {
       { name: 'Converted', value: leads.filter(l => l.status === 'Converted').length },
     ];
 
-    // Group leads by Date for Line Chart
     const dailyMap = {};
     leads.forEach(lead => {
       const date = new Date(lead.created_at).toLocaleDateString();
@@ -59,7 +77,6 @@ function App() {
     lead.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // --- HANDLERS ---
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     const newLead = {
@@ -69,24 +86,34 @@ function App() {
     };
     try {
       await axios.post(`${API_BASE_URL}/api/leads`, newLead);
-      alert('Inquiry Sent Successfully!');
+      showNotification('Inquiry Sent Successfully!', 'success');
       e.target.reset();
-    } catch { alert('Error sending lead.'); }
+    } catch { 
+      showNotification('Error sending lead. Please try again.', 'error'); 
+    }
   };
 
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
       const response = await axios.post(`${API_BASE_URL}/api/login`, { password });
-      if (response.data.success) setIsAuthenticated(true);
-    } catch { alert('Invalid Password'); }
+      if (response.data.success) {
+        setIsAuthenticated(true);
+        showNotification('Welcome back, Admin!', 'success');
+      }
+    } catch { 
+      showNotification('Invalid Password. Access Denied.', 'error'); 
+    }
   };
 
   const updateLead = async (id, status, notes) => {
     try {
       await axios.put(`${API_BASE_URL}/api/leads/${id}`, { status, notes });
       fetchLeads();
-    } catch { alert('Update failed'); }
+      showNotification('Lead updated successfully', 'success');
+    } catch { 
+      showNotification('Update failed', 'error'); 
+    }
   };
 
   const deleteLead = async (id) => {
@@ -94,14 +121,17 @@ function App() {
       try {
         await axios.delete(`${API_BASE_URL}/api/leads/${id}`);
         fetchLeads();
-      } catch { alert('Delete failed'); }
+        showNotification('Lead deleted permanently', 'success');
+      } catch { 
+        showNotification('Delete failed', 'error'); 
+      }
     }
   };
 
-  // --- RENDER VIEWS ---
   if (!isAuthenticated && view === 'form') {
     return (
       <div className="public-container">
+        <Notification {...notification} onClose={() => setNotification({ message: '', type: '' })} />
         <div className="glass-card">
           <div className="form-header">
             <Send size={40} className="icon-glow" />
@@ -134,6 +164,7 @@ function App() {
   if (!isAuthenticated && view === 'login') {
     return (
       <div className="public-container">
+        <Notification {...notification} onClose={() => setNotification({ message: '', type: '' })} />
         <div className="glass-card login-box">
           <Lock size={40} className="icon-glow" />
           <h2>CRM Portal</h2>
@@ -156,7 +187,7 @@ function App() {
 
   return (
     <div className="admin-layout">
-      {/* Sidebar */}
+      <Notification {...notification} onClose={() => setNotification({ message: '', type: '' })} />
       <aside className="admin-sidebar">
         <div className="sidebar-brand">
           <div className="brand-icon">F</div>
@@ -169,13 +200,12 @@ function App() {
           <button className={adminTab === 'leads' ? 'active' : ''} onClick={() => setAdminTab('leads')}>
             <Users size={20} /> Manage Leads
           </button>
-          <button onClick={() => setIsAuthenticated(false)} className="logout-nav">
+          <button onClick={() => { setIsAuthenticated(false); showNotification('Signed out', 'success'); }} className="logout-nav">
             <LogOut size={20} /> Sign Out
           </button>
         </nav>
       </aside>
 
-      {/* Main Content */}
       <main className="admin-main">
         <header className="admin-header">
           <div className="header-title">
@@ -196,7 +226,6 @@ function App() {
 
         {adminTab === 'dashboard' ? (
           <div className="dashboard-content">
-            {/* Top Stat Cards */}
             <div className="stats-grid">
               <div className="stat-box">
                 <Users className="blue" />
@@ -212,7 +241,6 @@ function App() {
               </div>
             </div>
 
-            {/* Charts Row */}
             <div className="charts-row">
               <div className="chart-container main-chart">
                 <h3>Lead Acquisition Timeline</h3>
