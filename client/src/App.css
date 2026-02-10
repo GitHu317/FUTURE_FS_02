@@ -990,3 +990,68 @@ button, input, textarea, select {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
+/* =========================================
+   10. NOTIFICATION POPUP STYLES
+   ========================================= */
+.notification-popup {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-radius: var(--border-radius-md);
+  background: rgba(15, 15, 19, 0.9);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-lg), 0 0 20px rgba(0, 0, 0, 0.4);
+  color: white;
+  min-width: 300px;
+  animation: notifySlideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes notifySlideIn {
+  from { transform: translateX(100%) scale(0.9); opacity: 0; }
+  to { transform: translateX(0) scale(1); opacity: 1; }
+}
+
+.notification-popup.success {
+  border-left: 4px solid var(--success);
+}
+
+.notification-popup.success svg {
+  color: var(--success);
+}
+
+.notification-popup.error {
+  border-left: 4px solid var(--danger);
+}
+
+.notification-popup.error svg {
+  color: var(--danger);
+}
+
+.notification-popup span {
+  font-size: 0.95rem;
+  font-weight: 500;
+  flex: 1;
+}
+
+.close-notify {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.close-notify:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
