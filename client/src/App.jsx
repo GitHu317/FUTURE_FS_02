@@ -4,7 +4,7 @@ import {
   Users, Mail, Clock, Trash2, Lock, LogIn, LogOut, Send, 
   Search, CheckCircle, BarChart3, Save, LayoutDashboard, 
   UserPlus, PieChart as PieIcon, Settings, X, AlertCircle,
-  TrendingUp, Percent, Zap, Activity
+  TrendingUp, Percent, Zap, Activity, FileText
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -30,7 +30,7 @@ const Notification = ({ message, type, onClose }) => {
 function App() {
   const [leads, setLeads] = useState([]);
   const [view, setView] = useState('form'); 
-  const [adminTab, setAdminTab] = useState('dashboard');
+  const [adminTab, setAdminTab] = useState('dashboard'); // dashboard, leads, operational, relationships
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -54,14 +54,14 @@ function App() {
     if (isAuthenticated) fetchLeads();
   }, [isAuthenticated, fetchLeads]);
 
-  // --- ENHANCED DATA PROCESSING ---
+  // --- DATA PROCESSING ---
   const stats = useMemo(() => {
     const total = leads.length;
     const newCount = leads.filter(l => l.status === 'New').length;
     const contactedCount = leads.filter(l => l.status === 'Contacted').length;
     const convertedCount = leads.filter(l => l.status === 'Converted').length;
 
-    // Relationship Calculations
+    // Advanced Operational Metrics
     const conversionRate = total > 0 ? ((convertedCount / total) * 100).toFixed(1) : 0;
     const engagementRate = total > 0 ? (((contactedCount + convertedCount) / total) * 100).toFixed(1) : 0;
     const contactToConvertRatio = contactedCount > 0 ? (convertedCount / contactedCount).toFixed(2) : 0;
@@ -103,14 +103,17 @@ function App() {
       await axios.post(`${API_BASE_URL}/api/leads`, newLead);
       showNotification('Inquiry Sent Successfully!', 'success');
       e.target.reset();
-    } catch { showNotification('Error sending lead.', 'error'); }
+    } catch { showNotification('Error sending inquiry.', 'error'); }
   };
 
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
       const response = await axios.post(`${API_BASE_URL}/api/login`, { password });
-      if (response.data.success) setIsAuthenticated(true);
+      if (response.data.success) {
+        setIsAuthenticated(true);
+        showNotification('Welcome back, Admin!');
+      }
     } catch { showNotification('Invalid Password', 'error'); }
   };
 
@@ -118,7 +121,7 @@ function App() {
     try {
       await axios.put(`${API_BASE_URL}/api/leads/${id}`, { status, notes });
       fetchLeads();
-      showNotification('Update successful');
+      showNotification('Lead updated successfully');
     } catch { showNotification('Update failed', 'error'); }
   };
 
@@ -127,11 +130,12 @@ function App() {
       try {
         await axios.delete(`${API_BASE_URL}/api/leads/${id}`);
         fetchLeads();
-        showNotification('Lead Deleted');
+        showNotification('Lead deleted');
       } catch { showNotification('Delete failed', 'error'); }
     }
   };
 
+  // --- RENDER PUBLIC VIEWS ---
   if (!isAuthenticated && view === 'form') {
     return (
       <div className="public-container">
@@ -203,7 +207,13 @@ function App() {
           <button className={adminTab === 'leads' ? 'active' : ''} onClick={() => setAdminTab('leads')}>
             <Users size={20} /> Manage Leads
           </button>
-          <button onClick={() => setIsAuthenticated(false)} className="logout-nav">
+          <button className={adminTab === 'operational' ? 'active' : ''} onClick={() => setAdminTab('operational')}>
+            <Zap size={20} /> Operational
+          </button>
+          <button className={adminTab === 'relationships' ? 'active' : ''} onClick={() => setAdminTab('relationships')}>
+            <Percent size={20} /> Relationships
+          </button>
+          <button onClick={() => { setIsAuthenticated(false); setView('form'); }} className="logout-nav">
             <LogOut size={20} /> Sign Out
           </button>
         </nav>
@@ -212,14 +222,19 @@ function App() {
       <main className="admin-main">
         <header className="admin-header">
           <div className="header-title">
-            <h1>Dashboard</h1>
-            <p>Relationship & Performance Metrics</p>
+            <h1>
+              {adminTab === 'dashboard' && 'Business Overview'}
+              {adminTab === 'leads' && 'Lead Management'}
+              {adminTab === 'operational' && 'Performance Metrics'}
+              {adminTab === 'relationships' && 'Data Relationships'}
+            </h1>
+            <p>Admin Control Panel</p>
           </div>
           <div className="header-actions">
             <div className="search-pill">
               <Search size={16} />
               <input 
-                placeholder="Search..." 
+                placeholder="Search database..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -227,66 +242,28 @@ function App() {
           </div>
         </header>
 
-        {adminTab === 'dashboard' ? (
+        {/* VIEW 1: DASHBOARD (ORIGINAL) */}
+        {adminTab === 'dashboard' && (
           <div className="dashboard-content">
-            {/* Primary Volume Stats */}
             <div className="stats-grid">
               <div className="stat-box">
                 <Users className="blue" />
                 <div><span>Total Leads</span><h3>{stats.total}</h3></div>
               </div>
               <div className="stat-box">
-                <TrendingUp className="purple" />
-                <div><span>Conv. Rate</span><h3>{stats.conversionRate}%</h3></div>
+                <Clock className="yellow" />
+                <div><span>New Leads</span><h3>{stats.newCount}</h3></div>
               </div>
               <div className="stat-box">
-                <Activity className="pink" />
-                <div><span>Engagement</span><h3>{stats.engagementRate}%</h3></div>
-              </div>
-            </div>
-
-            {/* Relationship Detail Cards */}
-            <div className="relationship-grid">
-              <div className="rel-card">
-                <div className="rel-header">
-                  <Zap size={18} />
-                  <span>Lead Pipeline Health</span>
-                </div>
-                <div className="rel-body">
-                   <div className="rel-stat">
-                      <label>Action Ratio</label>
-                      <div className="progress-container">
-                        <div className="progress-bar" style={{ width: `${stats.engagementRate}%` }}></div>
-                      </div>
-                      <small>{stats.engagementRate}% of leads have been engaged.</small>
-                   </div>
-                   <div className="rel-stat">
-                      <label>Contact-to-Close</label>
-                      <p>{stats.contactToConvertRatio}x</p>
-                      <small>Conversion multiplier for contacted leads.</small>
-                   </div>
-                </div>
-              </div>
-
-              <div className="rel-card">
-                <div className="rel-header">
-                  <Percent size={18} />
-                  <span>Status Distribution</span>
-                </div>
-                <div className="rel-body">
-                   <ul className="dist-list">
-                      <li><span>New</span> <strong>{stats.newCount}</strong></li>
-                      <li><span>Contacted</span> <strong>{stats.contactedCount}</strong></li>
-                      <li><span>Converted</span> <strong>{stats.convertedCount}</strong></li>
-                   </ul>
-                </div>
+                <CheckCircle className="green" />
+                <div><span>Conversions</span><h3>{stats.convertedCount}</h3></div>
               </div>
             </div>
 
             <div className="charts-row">
-              <div className="chart-container">
+              <div className="chart-container main-chart">
                 <h3>Acquisition Timeline</h3>
-                <ResponsiveContainer width="100%" height={250}>
+                <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={stats.timelineData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
                     <XAxis dataKey="date" stroke="#94a3b8" />
@@ -296,58 +273,46 @@ function App() {
                   </LineChart>
                 </ResponsiveContainer>
               </div>
+              <div className="chart-container side-chart">
+                <h3>Lead Distribution</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie data={stats.statusData} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                      {stats.statusData.map((e, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
-        ) : (
+        )}
+
+        {/* VIEW 2: MANAGE LEADS */}
+        {adminTab === 'leads' && (
           <div className="leads-content">
-            {/* ... Existing Leads Table (Unchanged) ... */}
             <div className="table-card">
               <table className="modern-table">
                 <thead>
-                  <tr>
-                    <th>Lead</th>
-                    <th>Date</th>
-                    <th>Status</th>
-                    <th>Notes</th>
-                    <th>Actions</th>
-                  </tr>
+                  <tr><th>Lead</th><th>Date</th><th>Status</th><th>Notes</th><th>Actions</th></tr>
                 </thead>
                 <tbody>
                   {filteredLeads.map(lead => (
                     <tr key={lead.id}>
-                      <td>
-                        <div className="lead-info">
-                          <strong>{lead.name}</strong>
-                          <span>{lead.email}</span>
-                        </div>
-                      </td>
+                      <td><div className="lead-info"><strong>{lead.name}</strong><span>{lead.email}</span></div></td>
                       <td>{new Date(lead.created_at).toLocaleDateString()}</td>
-                      <td>
-                        <span className={`badge ${lead.status.toLowerCase()}`}>{lead.status}</span>
-                      </td>
-                      <td>
-                        <textarea 
-                          id={`note-${lead.id}`}
-                          defaultValue={lead.notes} 
-                          className="table-note"
-                        />
-                      </td>
+                      <td><span className={`badge ${lead.status.toLowerCase()}`}>{lead.status}</span></td>
+                      <td><textarea id={`note-${lead.id}`} defaultValue={lead.notes} className="table-note" /></td>
                       <td>
                         <div className="table-actions">
-                          <select 
-                            value={lead.status}
-                            onChange={(e) => updateLead(lead.id, e.target.value, document.getElementById(`note-${lead.id}`).value)}
-                          >
+                          <select value={lead.status} onChange={(e) => updateLead(lead.id, e.target.value, document.getElementById(`note-${lead.id}`).value)}>
                             <option value="New">New</option>
                             <option value="Contacted">Contacted</option>
                             <option value="Converted">Converted</option>
                           </select>
-                          <button className="save-icon" onClick={() => updateLead(lead.id, lead.status, document.getElementById(`note-${lead.id}`).value)}>
-                            <Save size={16} />
-                          </button>
-                          <button className="del-icon" onClick={() => deleteLead(lead.id)}>
-                            <Trash2 size={16} />
-                          </button>
+                          <button className="save-icon" onClick={() => updateLead(lead.id, lead.status, document.getElementById(`note-${lead.id}`).value)}><Save size={16} /></button>
+                          <button className="del-icon" onClick={() => deleteLead(lead.id)}><Trash2 size={16} /></button>
                         </div>
                       </td>
                     </tr>
@@ -355,6 +320,73 @@ function App() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {/* VIEW 3: OPERATIONAL INSIGHTS */}
+        {adminTab === 'operational' && (
+          <div className="dashboard-content">
+            <div className="stats-grid">
+               <div className="stat-box">
+                <TrendingUp className="purple" />
+                <div><span>Conversion Rate</span><h3>{stats.conversionRate}%</h3></div>
+              </div>
+              <div className="stat-box">
+                <Activity className="pink" />
+                <div><span>Engagement Rate</span><h3>{stats.engagementRate}%</h3></div>
+              </div>
+              <div className="stat-box">
+                <Zap className="blue" />
+                <div><span>Efficiency</span><h3>{stats.contactToConvertRatio}x</h3></div>
+              </div>
+            </div>
+            <div className="rel-card full-width">
+               <div className="rel-header"><Zap size={18} /><span>Pipeline Health Summary</span></div>
+               <div className="rel-body">
+                  <div className="rel-stat">
+                    <label>Marketing-to-Sales Transition</label>
+                    <div className="progress-container"><div className="progress-bar" style={{ width: `${stats.engagementRate}%` }}></div></div>
+                    <small>{stats.engagementRate}% of leads moved from 'New' to 'Engaged'.</small>
+                  </div>
+                  <div className="rel-stat">
+                    <label>Final Closing Ratio</label>
+                    <div className="progress-container"><div className="progress-bar" style={{ width: `${stats.conversionRate}%`, background: 'var(--success)' }}></div></div>
+                    <small>{stats.conversionRate}% conversion based on total entry volume.</small>
+                  </div>
+               </div>
+            </div>
+          </div>
+        )}
+
+        {/* VIEW 4: DATA RELATIONSHIPS */}
+        {adminTab === 'relationships' && (
+          <div className="relationship-grid">
+             <div className="rel-card">
+                <div className="rel-header"><Percent size={18} /><span>Volume Breakdown</span></div>
+                <div className="rel-body">
+                   <ul className="dist-list">
+                      <li><span>Incoming Leads</span> <strong>{stats.total}</strong></li>
+                      <li><span>Actively Contacted</span> <strong>{stats.contactedCount}</strong></li>
+                      <li><span>Successfully Converted</span> <strong>{stats.convertedCount}</strong></li>
+                      <li><span>Pending Review</span> <strong>{stats.newCount}</strong></li>
+                   </ul>
+                </div>
+             </div>
+             <div className="rel-card">
+                <div className="rel-header"><FileText size={18} /><span>Communication Depth</span></div>
+                <div className="rel-body">
+                   <div className="rel-stat">
+                      <label>Contact-to-Close Multiplier</label>
+                      <p>{stats.contactToConvertRatio}x</p>
+                      <small>The ratio of contacted users that eventually convert.</small>
+                   </div>
+                   <div className="rel-stat">
+                      <label>Database Utilization</label>
+                      <p>{(( (stats.total - stats.newCount) / stats.total ) * 100).toFixed(0)}%</p>
+                      <small>Percentage of entries with active follow-ups.</small>
+                   </div>
+                </div>
+             </div>
           </div>
         )}
       </main>
