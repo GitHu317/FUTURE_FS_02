@@ -979,7 +979,7 @@ button, input, textarea, select {
 
 .alert-success { background: var(--success-bg); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.2); }
 .alert-error { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2); }
-
+ 
 /* Fix generic Recharts glitches */
 .recharts-wrapper {
   font-family: 'Plus Jakarta Sans', sans-serif;
