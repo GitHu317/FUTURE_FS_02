@@ -1055,3 +1055,113 @@ button, input, textarea, select {
   background: rgba(255, 255, 255, 0.1);
   color: white;
 }
+/* =========================================
+   11. RELATIONSHIP & ANALYTICS WIDGETS
+   ========================================= */
+
+.relationship-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.rel-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  padding: 24px;
+  transition: all var(--transition-smooth);
+}
+
+.rel-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-secondary);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  margin-bottom: 24px;
+}
+
+.rel-header svg {
+  color: var(--primary);
+}
+
+.rel-stat {
+  margin-bottom: 20px;
+}
+
+.rel-stat label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.rel-stat p {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: white;
+}
+
+.rel-stat small {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+/* Progress Bar Components */
+.progress-container {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  box-shadow: 0 0 10px var(--primary-glow);
+  transition: width 1s ease-out;
+}
+
+/* Distribution List */
+.dist-list {
+  list-style: none;
+  padding: 0;
+}
+
+.dist-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.9rem;
+}
+
+.dist-list li:last-child {
+  border-bottom: none;
+}
+
+.dist-list span {
+  color: var(--text-secondary);
+}
+
+.dist-list strong {
+  color: white;
+}
+
+/* New Stat Colors */
+.stat-box svg.purple { background: rgba(168, 85, 247, 0.1); color: #a855f7; box-shadow: 0 0 15px rgba(168, 85, 247, 0.2); }
+.stat-box svg.pink { background: rgba(236, 72, 153, 0.1); color: #ec4899; box-shadow: 0 0 15px rgba(236, 72, 153, 0.2); }
+
+/* Responsive adjustments for relationship grid */
+@media (max-width: 1024px) {
+  .relationship-grid {
+    grid-template-columns: 1fr;
+  }
+}
