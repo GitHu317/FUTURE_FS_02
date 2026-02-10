@@ -7,30 +7,58 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// --- DATABASE CONNECTION ---
-const db = mysql.createConnection({
+// --- DATABASE CONNECTION (AIVEN + Render SAFE) ---
+const db = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME
+    database: process.env.DB_NAME,
+    port: Number(process.env.DB_PORT),
+    ssl: {
+        rejectUnauthorized: false
+    },
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
 });
 
-db.connect((err) => {
+// Test DB connection & auto-create table
+db.query('SELECT 1', (err) => {
     if (err) {
-        console.error('❌ Error connecting to MySQL:', err);
+        console.error('❌ MySQL connection failed:', err);
         return;
     }
-    console.log('✅ Connected to MySQL Database');
+
+    console.log('✅ Connected to Aiven MySQL');
+
+    const createTableQuery = `
+    CREATE TABLE IF NOT EXISTS leads (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        source VARCHAR(50) DEFAULT 'Website',
+        status ENUM('New', 'Contacted', 'Converted') DEFAULT 'New',
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );`;
+
+    db.query(createTableQuery, (err) => {
+        if (err) console.error('❌ Error creating table:', err);
+        else console.log("✅ Table 'leads' verified/created");
+    });
 });
 
 // --- API ROUTES ---
 
-// 1. SECURE LOGIN: Verify password on the server
+// 1. SECURE LOGIN
 app.post('/api/login', (req, res) => {
     const { password } = req.body;
-    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 
-    if (password === ADMIN_PASSWORD) {
+    if (!process.env.ADMIN_PASSWORD) {
+        return res.status(500).json({ success: false, message: 'Admin password not set in environment variables.' });
+    }
+
+    if (password === process.env.ADMIN_PASSWORD) {
         res.json({ success: true });
     } else {
         res.status(401).json({ success: false, message: 'Invalid password' });
@@ -39,8 +67,7 @@ app.post('/api/login', (req, res) => {
 
 // 2. GET: Fetch all leads
 app.get('/api/leads', (req, res) => {
-    const sql = 'SELECT * FROM leads ORDER BY created_at DESC';
-    db.query(sql, (err, results) => {
+    db.query('SELECT * FROM leads ORDER BY created_at DESC', (err, results) => {
         if (err) {
             console.error('Error fetching leads:', err);
             return res.status(500).json(err);
@@ -52,9 +79,10 @@ app.get('/api/leads', (req, res) => {
 // 3. POST: Create a new lead
 app.post('/api/leads', (req, res) => {
     const { name, email, message } = req.body;
-    // Maps form 'message' to DB 'notes'
-    const sql = 'INSERT INTO leads (name, email, notes, status, source) VALUES (?, ?, ?, "New", "Website")';
-    
+    const sql = `
+        INSERT INTO leads (name, email, notes, status, source)
+        VALUES (?, ?, ?, 'New', 'Website')
+    `;
     db.query(sql, [name, email, message], (err, result) => {
         if (err) {
             console.error('Error creating lead:', err);
@@ -64,27 +92,25 @@ app.post('/api/leads', (req, res) => {
     });
 });
 
-// 4. PUT: Update lead status AND notes
+// 4. PUT: Update lead status & notes
 app.put('/api/leads/:id', (req, res) => {
     const { status, notes } = req.body;
-    const { id } = req.params;
-    const sql = 'UPDATE leads SET status = ?, notes = ? WHERE id = ?';
-    
-    db.query(sql, [status, notes, id], (err, result) => {
-        if (err) {
-            console.error('Error updating lead:', err);
-            return res.status(500).json(err);
+    db.query(
+        'UPDATE leads SET status = ?, notes = ? WHERE id = ?',
+        [status, notes, req.params.id],
+        (err) => {
+            if (err) {
+                console.error('Error updating lead:', err);
+                return res.status(500).json(err);
+            }
+            res.json({ message: 'Lead updated successfully' });
         }
-        res.json({ message: 'Lead updated successfully' });
-    });
+    );
 });
 
 // 5. DELETE: Remove a lead
 app.delete('/api/leads/:id', (req, res) => {
-    const { id } = req.params;
-    const sql = 'DELETE FROM leads WHERE id = ?';
-    
-    db.query(sql, [id], (err, result) => {
+    db.query('DELETE FROM leads WHERE id = ?', [req.params.id], (err) => {
         if (err) {
             console.error('Error deleting lead:', err);
             return res.status(500).json(err);
@@ -93,30 +119,8 @@ app.delete('/api/leads/:id', (req, res) => {
     });
 });
 
-const PORT = process.env.PORT || 5000;
+// --- START SERVER ---
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
     console.log(`🚀 CRM Server running on port ${PORT}`);
-});db.connect((err) => {
-    if (err) {
-        console.error('❌ Error connecting to MySQL:', err);
-        return;
-    }
-    console.log('✅ Connected to MySQL Database');
-
-    // AUTO-CREATE TABLE FOR CLOUD HOSTING
-    const createTableQuery = `
-    CREATE TABLE IF NOT EXISTS leads (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        email VARCHAR(255) NOT NULL,
-        source VARCHAR(50) DEFAULT 'Website',
-        status ENUM('New', 'Contacted', 'Converted') DEFAULT 'New',
-        notes TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );`;
-    
-    db.query(createTableQuery, (err) => {
-        if (err) console.error("Error creating table:", err);
-        else console.log("Table 'leads' verified/created.");
-    });
 });
